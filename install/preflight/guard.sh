@@ -4,15 +4,16 @@ abort() {
   gum confirm "Proceed anyway on your own accord and without assistance?" || exit 1
 }
 
+source "$(dirname -- "${BASH_SOURCE[0]}")/supported-versions.sh"
+
 # Must be a valid OS
 [[ -f /etc/os-release ]] || abort "/etc/os-release"
 
 . /etc/os-release
 
 # Check if running on Ubuntu
-SUPPORTED_VERSIONS=("24.04")
 [[ $ID != "ubuntu" ]] && abort "Ubuntu LTS"
-if [[ ! " ${SUPPORTED_VERSIONS[@]} " =~ " ${VERSION_ID} " ]]; then
+if ! omakub_ubuntu_version_supported "${VERSION_ID:-}"; then
   abort "Only Ubuntu LTS versions are supported. Supported versions: ${SUPPORTED_VERSIONS[*]}"
 fi
 

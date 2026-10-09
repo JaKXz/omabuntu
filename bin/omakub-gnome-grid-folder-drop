@@ -111,5 +111,3 @@ else
   echo "App '$DESKTOP_FILE' is not in folder '$FOLDER_DISPLAY_NAME'"
   return 1
 fi
-
-

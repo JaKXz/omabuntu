@@ -2,8 +2,24 @@
 omakub-refresh-applications
 update-desktop-database ~/.local/share/applications
 
-# Open PDFs with the Document Viewer
-xdg-mime default org.gnome.Evince.desktop application/pdf
+# Prefer Papers on newer Ubuntu releases, while retaining support for Evince.
+pdf_viewer=""
+for candidate in org.gnome.Papers.desktop org.gnome.Evince.desktop; do
+  for applications_dir in \
+    /usr/share/applications \
+    /usr/local/share/applications \
+    /var/lib/flatpak/exports/share/applications \
+    "$HOME/.local/share/applications"; do
+    if [[ -f $applications_dir/$candidate ]]; then
+      pdf_viewer="$candidate"
+      break 2
+    fi
+  done
+done
+
+if [[ -n $pdf_viewer ]]; then
+  xdg-mime default "$pdf_viewer" application/pdf
+fi
 
 # Open directories in file manager
 xdg-mime default org.gnome.Nautilus.desktop inode/directory

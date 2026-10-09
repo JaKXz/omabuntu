@@ -15,4 +15,3 @@ if (( exit_code == 17 )); then
 else
   echo -e "Already up to date."
 fi
-

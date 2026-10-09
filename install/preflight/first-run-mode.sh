@@ -11,7 +11,6 @@ After=default.target
 
 [Service]
 Type=oneshot
-Environment=DISPLAY=:0
 Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/%U/bus
 ExecStart=/bin/bash $OMAKUB_PATH/bin/omakub-first-run
 ExecStartPost=systemctl --user disable omakub-first-run.service

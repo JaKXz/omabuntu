@@ -7,6 +7,7 @@ Omabuntu is a fork of [Omakub](https://omarchy.org/omakub), the one-liner tool t
 
 ## Documentation
 
+For Ubuntu 26.04 upgrade and Omakub migration steps, see [migration.md](migration.md).
 For Omabuntu-specific features, consult the [Omabuntu manual](https://omabuntu.omakasui.org/manual).
 To learn about the project it comes from and the key features it has inherited, visit the [official Omakub manual](https://manuals.omamix.org/1/read).
 

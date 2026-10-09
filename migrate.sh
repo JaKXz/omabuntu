@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -o pipefail
+set -eEo pipefail
 
 ascii_art='
  ▄██████▄    ▄▄▄▄███▄▄▄▄      ▄████████ ▀█████████▄  ███    █▄  ███▄▄▄▄       ███     ███    █▄
@@ -25,8 +25,27 @@ export OMAKUB_REF="${OMAKUB_REF:-main}"
 export OMAKUB_BRAND="${OMAKUB_BRAND:-Omabuntu}"
 export OMAKUB_MIGRATE="$HOME/.local/share/omakub/install/migrate"
 
-# Define backup location
+# Define backup and staging locations
 export BACKUP_DIR="$HOME/.local/share/omakub-backup-$(date +%Y%m%d_%H%M%S)"
+MIGRATION_STAGE=$(mktemp -d "${TMPDIR:-/tmp}/omabuntu-migration.XXXXXX")
+MIGRATION_SUCCEEDED=false
+
+restore_on_failure() {
+  local status=$?
+
+  if [[ $MIGRATION_SUCCEEDED != true && -d $BACKUP_DIR/omakub ]]; then
+    echo "Migration did not complete. Restoring the original Omakub checkout and .bashrc from $BACKUP_DIR."
+    rm -rf "$HOME/.local/share/omakub"
+    cp -a "$BACKUP_DIR/omakub" "$HOME/.local/share/omakub"
+    if [[ -f $BACKUP_DIR/bashrc.bak ]]; then
+      cp -a "$BACKUP_DIR/bashrc.bak" "$HOME/.bashrc"
+    fi
+  fi
+
+  rm -rf "$MIGRATION_STAGE"
+  return "$status"
+}
+trap restore_on_failure EXIT
 
 # Check Omakub installation
 if [[ ! -d $HOME/.local/share/omakub ]]; then
@@ -50,9 +69,9 @@ fi
 gum style --border normal --border-foreground 6 --padding "1 2" \
   "Ready to migrate to Omabuntu?" \
   "" \
-  "• This migration cannot be stopped once started!" \
+  "• Upgrade Ubuntu separately before running this migration" \
   "• Make sure you're connected to power or have a full battery" \
-  "• A backup will be created before proceeding"
+  "• A backup will be created before changing the Omakub checkout"
 
 echo
 
@@ -62,28 +81,22 @@ if ! gum confirm "Continue with migration?"; then
   exit 1
 fi
 
-# Backup
-mkdir -p "$BACKUP_DIR"
-cp -r ~/.local/share/omakub "$BACKUP_DIR/omakub" 2>/dev/null || true
-cp -f ~/.bashrc "$BACKUP_DIR/bashrc.bak" 2>/dev/null || true
-
-# Clone
+# Clone the target before replacing the original checkout.
 echo -e "\nCloning $OMAKUB_BRAND from: https://github.com/${OMAKUB_REPO}.git"
-rm -rf ~/.local/share/omakub
-git clone https://github.com/$OMAKUB_REPO.git ~/.local/share/omakub >/dev/null 2>/dev/null || {
-     echo "Clone failed, restoring backup..."
-     rm -rf ~/.local/share/omakub
-     cp -r "$BACKUP_DIR/omakub" ~/.local/share/omakub
-     exit 1
-}
+git clone --branch "$OMAKUB_REF" --single-branch "https://github.com/${OMAKUB_REPO}.git" "$MIGRATION_STAGE/omakub" >/dev/null
 
-# Use custom branch if instructed, otherwise default to main
-echo -e "\e[32mUsing branch: $OMAKUB_REF\e[0m"
-cd ~/.local/share/omakub
-git fetch origin "${OMAKUB_REF}" && git checkout "${OMAKUB_REF}"
-cd -
+# Back up the original checkout and shell configuration.
+mkdir -p "$BACKUP_DIR"
+cp -a "$HOME/.local/share/omakub" "$BACKUP_DIR/omakub"
+if [[ -f $HOME/.bashrc ]]; then
+  cp -a "$HOME/.bashrc" "$BACKUP_DIR/bashrc.bak"
+fi
+
+# Replace the checkout only after the clone and backup have succeeded.
+mv "$HOME/.local/share/omakub" "$MIGRATION_STAGE/omakub-original"
+mv "$MIGRATION_STAGE/omakub" "$HOME/.local/share/omakub"
 
 # Migrate
 source "$OMAKUB_MIGRATE/all.sh"
-source ~/.local/share/omakub/install.sh
-
+source "$HOME/.local/share/omakub/install.sh"
+MIGRATION_SUCCEEDED=true

@@ -11,12 +11,6 @@ fi
 # ==============================================================================
 
 apply_plymouth() {
-  # Ubuntu uses initramfs-tools, not mkinitcpio
-  # Check if plymouth is already in initramfs modules
-  if ! grep -q "plymouth" /etc/initramfs-tools/modules 2>/dev/null; then
-    echo "plymouth" | sudo tee -a /etc/initramfs-tools/modules
-  fi
-
   # Install and configure Omabuntu Plymouth theme
   THEME_SOURCE_DIR="$OMAKUB_PATH/themes/plymouth"
 
@@ -50,8 +44,8 @@ EOF
     sudo systemctl daemon-reload
   fi
 
-  # Final initramfs update to ensure all Plymouth changes are applied
-  sudo update-initramfs -u
+  # Rebuild using the release's selected initramfs backend.
+  omakub-plymouth-update-initramfs
 }
 
 if [[ $LVM_DETECTED == true ]]; then

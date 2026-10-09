@@ -11,4 +11,3 @@ if [[ "$1" != "--no-edit" ]]; then
 fi
 
 echo $migration_file
-

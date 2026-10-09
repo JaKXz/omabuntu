@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# omakub:summary=Rebuild the initramfs using the selected Ubuntu backend.
+# omakub:hidden=true
+# omakub:requires-sudo=true
+
+set -euo pipefail
+
+backend=${OMAKUB_INITRAMFS_BACKEND:-}
+if [[ -z $backend ]]; then
+  . /etc/os-release
+  if [[ ${VERSION_ID:-} == "26.04" ]]; then
+    backend=dracut
+  else
+    backend=initramfs-tools
+  fi
+fi
+
+case "$backend" in
+  dracut)
+    if ! command -v dracut >/dev/null 2>&1; then
+      echo "Error: dracut is selected but not installed. Set OMAKUB_INITRAMFS_BACKEND=initramfs-tools if that backend is active." >&2
+      exit 1
+    fi
+
+    sudo install -d -m 0755 /etc/dracut.conf.d
+    printf 'add_dracutmodules+=" plymouth "\n' | sudo tee /etc/dracut.conf.d/omakub-plymouth.conf >/dev/null
+    sudo dracut --regenerate-all --force
+    ;;
+  initramfs-tools)
+    if ! command -v update-initramfs >/dev/null 2>&1; then
+      echo "Error: initramfs-tools is selected but update-initramfs is not installed." >&2
+      exit 1
+    fi
+
+    sudo install -d -m 0755 /etc/initramfs-tools
+    if [[ ! -f /etc/initramfs-tools/modules ]]; then
+      sudo install -m 0644 /dev/null /etc/initramfs-tools/modules
+    fi
+    if ! grep -q '^plymouth$' /etc/initramfs-tools/modules; then
+      printf 'plymouth\n' | sudo tee -a /etc/initramfs-tools/modules >/dev/null
+    fi
+    sudo update-initramfs -u
+    ;;
+  *)
+    echo "Error: unsupported initramfs backend '$backend'. Use dracut or initramfs-tools." >&2
+    exit 1
+    ;;
+esac

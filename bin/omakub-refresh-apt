@@ -4,6 +4,8 @@
 # omakub:args=[stable|dev]
 # omakub:requires-sudo=true
 
+set -euo pipefail
+
 channel="${1:-stable}"
 
 if [[ $channel != "stable" && $channel != "dev" ]]; then
@@ -11,7 +13,11 @@ if [[ $channel != "stable" && $channel != "dev" ]]; then
   exit 1
 fi
 
-codename=$(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+codename=$(. /etc/os-release && echo "${UBUNTU_CODENAME:-${VERSION_CODENAME:-}}")
+if [[ -z $codename ]]; then
+  echo "Error: unable to determine the Ubuntu codename from /etc/os-release" >&2
+  exit 1
+fi
 
 if [[ $channel == "dev" ]]; then
   suite="${codename}-dev"
@@ -30,6 +36,10 @@ fi
 echo "Setting APT channel to $channel ($suite)"
 
 for sources in /etc/apt/sources.list.d/omakasui.sources /etc/apt/sources.list.d/omakasui-core.sources; do
+  if [[ ! -f $sources ]]; then
+    echo "Error: expected APT source file is missing: $sources" >&2
+    exit 1
+  fi
   sudo sed -i -E "s/^Suites:.*/Suites: $suite/" "$sources"
 done
 
